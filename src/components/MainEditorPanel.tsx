@@ -563,7 +563,7 @@ export default function MainEditorPanel({
       </div>
 
       {/* Tab Panels */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 pb-24 md:pb-6">
         {activeTab === 'metadata' && (
           /* Metadata form */
           <form onSubmit={handleSaveMetadata} className="max-w-3xl space-y-5 bg-white/[0.02] border border-white/5 rounded-2xl p-6 backdrop-blur-md text-start">

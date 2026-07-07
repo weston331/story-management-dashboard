@@ -261,7 +261,7 @@ const Sidebar = React.memo(function Sidebar({
 
       {/* Story List with dynamic viewport rendering pagination */}
       <div 
-        className="flex-1 overflow-y-auto p-3 space-y-2.5"
+        className="flex-1 overflow-y-auto p-3 space-y-2.5 pb-20 md:pb-3"
         onScroll={(e) => {
           const target = e.currentTarget;
           // When user scrolls down close to bottom (within 120px), load the next 40 items
@@ -364,7 +364,7 @@ const StoryListCard = React.memo(function StoryListCard({
     <div
       id={`story-card-${story.id}`}
       onClick={() => onSelectStory(story.id)}
-      className={`group border rounded-xl p-4 cursor-pointer transition-all duration-300 relative overflow-hidden backdrop-blur-md ${
+      className={`group border rounded-xl p-4 cursor-pointer transition-all duration-300 relative overflow-hidden story-card-contain ${
         isSelected
           ? 'bg-[#D4AF37]/10 border-[#D4AF37]/40 shadow-[0_8px_32px_rgba(212,175,55,0.1)]'
           : 'bg-white/[0.03] border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/[0.06] hover:shadow-[0_8px_32px_rgba(255,255,255,0.02)]'

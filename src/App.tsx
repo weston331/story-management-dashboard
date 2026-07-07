@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 
 import { 
   Database, Sliders, LogOut, CheckCircle, HelpCircle, 
   BookOpen, Sparkles, AlertTriangle, Moon, RefreshCw, Layers, Globe, Loader2,
-  Edit3
+  Edit3, BookMarked, PenLine, PlusCircle
 } from 'lucide-react';
 import { Story, StoryBlock, StorySystemType, Chapter } from './types';
 import { Language, translations } from './types/locale';
@@ -38,6 +38,9 @@ export default function App() {
 
   // Active Story Type (System Type)
   const [systemType, setSystemType] = useState<StorySystemType>('ahlulbayt');
+
+  // Mobile navigation tab state: 'stories' | 'editor'
+  const [mobileTab, setMobileTab] = useState<'stories' | 'editor'>('stories');
 
   // Database states
   const [stories, setStories] = useState<Story[]>([]);
@@ -697,42 +700,58 @@ export default function App() {
             </div>
           </div>
         ) : (
-          /* Active Workspace Layout */
           <>
-            <Sidebar
-              currentUser={user}
-              stories={stories}
-              selectedStoryId={selectedStoryId}
-              onSelectStory={setSelectedStoryId}
-              onAddStoryOpen={() => setIsAddStoryOpen(true)}
-              isLoading={isLoadingStories}
-              lang={lang}
-              systemType={systemType}
-              onSystemTypeChange={setSystemType}
-            />
 
-            <MainEditorPanel
-              currentUser={user}
-              currentUserRole={userRole}
-              story={activeStory}
-              onUpdateStory={handleUpdateStory}
-              onDeleteStory={handleDeleteStory}
-              blocks={blocks}
-              isLoadingBlocks={isLoadingBlocks}
-              onSaveBlocks={handleSaveBlocks}
-              isSavingBlocks={isSavingBlocks}
-              addToast={addToast}
-              lang={lang}
-              onDeselectStory={() => setSelectedStoryId(null)}
-              systemType={systemType}
-              chapters={chapters}
-              selectedChapterId={selectedChapterId}
-              onSelectChapter={setSelectedChapterId}
-              isLoadingChapters={isLoadingChapters}
-              onAddChapter={handleAddChapter}
-              onUpdateChapter={handleUpdateChapter}
-              onDeleteChapter={handleDeleteChapter}
-            />
+            {/* Sidebar: always visible on desktop; on mobile only when mobileTab=stories */}
+            <div className={`md:flex ${
+              mobileTab === 'stories' ? 'flex' : 'hidden'
+            } flex-col flex-shrink-0 w-full md:w-85 lg:w-96 h-full overflow-hidden`}>
+              <Sidebar
+                currentUser={user}
+                stories={stories}
+                selectedStoryId={selectedStoryId}
+                onSelectStory={(id) => {
+                  setSelectedStoryId(id);
+                  setMobileTab('editor'); // Auto-switch to editor on mobile when story selected
+                }}
+                onAddStoryOpen={() => setIsAddStoryOpen(true)}
+                isLoading={isLoadingStories}
+                lang={lang}
+                systemType={systemType}
+                onSystemTypeChange={setSystemType}
+              />
+            </div>
+
+            {/* MainEditor: always visible on desktop; on mobile only when mobileTab=editor */}
+            <div className={`md:flex flex-1 ${
+              mobileTab === 'editor' ? 'flex' : 'hidden'
+            } flex-col overflow-hidden`}>
+              <MainEditorPanel
+                currentUser={user}
+                currentUserRole={userRole}
+                story={activeStory}
+                onUpdateStory={handleUpdateStory}
+                onDeleteStory={handleDeleteStory}
+                blocks={blocks}
+                isLoadingBlocks={isLoadingBlocks}
+                onSaveBlocks={handleSaveBlocks}
+                isSavingBlocks={isSavingBlocks}
+                addToast={addToast}
+                lang={lang}
+                onDeselectStory={() => {
+                  setSelectedStoryId(null);
+                  setMobileTab('stories'); // Go back to stories list on mobile
+                }}
+                systemType={systemType}
+                chapters={chapters}
+                selectedChapterId={selectedChapterId}
+                onSelectChapter={setSelectedChapterId}
+                isLoadingChapters={isLoadingChapters}
+                onAddChapter={handleAddChapter}
+                onUpdateChapter={handleUpdateChapter}
+                onDeleteChapter={handleDeleteChapter}
+              />
+            </div>
           </>
         )}
       </div>
@@ -762,6 +781,71 @@ export default function App() {
             addToast={addToast}
           />
         </Suspense>
+      )}
+      {/* ── Mobile Bottom Navigation Bar ─────────────────────────── */}
+      {user && !tableError && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0c0e17]/95 border-t border-white/10 bottom-nav-safe shadow-[0_-4px_24px_rgba(0,0,0,0.6)]">
+          <div className="flex items-stretch h-16">
+
+            {/* Tab: Stories List */}
+            <button
+              id="mobile-nav-stories"
+              onClick={() => setMobileTab('stories')}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                mobileTab === 'stories'
+                  ? 'text-[#D4AF37]'
+                  : 'text-stone-500 hover:text-stone-300'
+              }`}
+            >
+              <BookMarked className={`w-5 h-5 transition-transform ${
+                mobileTab === 'stories' ? 'scale-110' : ''
+              }`} />
+              <span className="text-[10px] font-semibold tracking-wide">
+                {lang === 'ar' ? 'القصص' : 'Stories'}
+              </span>
+              {mobileTab === 'stories' && (
+                <span className="absolute bottom-0 w-10 h-0.5 bg-[#D4AF37] rounded-t-full" />
+              )}
+            </button>
+
+            {/* Tab: Add New Story — center prominent button */}
+            <button
+              id="mobile-nav-add"
+              onClick={() => setIsAddStoryOpen(true)}
+              className="flex-1 flex flex-col items-center justify-center gap-1 cursor-pointer group"
+            >
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-amber-600 flex items-center justify-center shadow-lg shadow-amber-900/40 group-active:scale-95 transition-transform -mt-4">
+                <PlusCircle className="w-5 h-5 text-black" />
+              </div>
+            </button>
+
+            {/* Tab: Editor */}
+            <button
+              id="mobile-nav-editor"
+              onClick={() => setMobileTab('editor')}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                mobileTab === 'editor'
+                  ? 'text-[#D4AF37]'
+                  : 'text-stone-500 hover:text-stone-300'
+              }`}
+            >
+              <PenLine className={`w-5 h-5 transition-transform ${
+                mobileTab === 'editor' ? 'scale-110' : ''
+              }`} />
+              <span className="text-[10px] font-semibold tracking-wide">
+                {lang === 'ar' ? 'المحرر' : 'Editor'}
+              </span>
+              {mobileTab === 'editor' && (
+                <span className="absolute bottom-0 w-10 h-0.5 bg-[#D4AF37] rounded-t-full" />
+              )}
+              {/* Badge: show dot if a story is selected */}
+              {selectedStoryId && mobileTab !== 'editor' && (
+                <span className="absolute top-2 w-2 h-2 rounded-full bg-emerald-400" />
+              )}
+            </button>
+
+          </div>
+        </nav>
       )}
     </div>
 
