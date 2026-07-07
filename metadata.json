@@ -1,0 +1,6 @@
+{
+  "name": "Siraj Al-Athar",
+  "description": "A premium dashboard for Siraj Al-Athar (سراج الأطهار) to manage chronicles, Quranic verses, and content blocks with a spiritual Islamic aesthetic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
