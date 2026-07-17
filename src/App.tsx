@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 
 import { 
   Database, Sliders, LogOut, CheckCircle, HelpCircle, 
   BookOpen, Sparkles, AlertTriangle, Moon, RefreshCw, Layers, Globe, Loader2,
-  Edit3, BookMarked, PenLine, PlusCircle
+  Edit3
 } from 'lucide-react';
 import { Story, StoryBlock, StorySystemType, Chapter } from './types';
 import { Language, translations } from './types/locale';
@@ -38,9 +38,6 @@ export default function App() {
 
   // Active Story Type (System Type)
   const [systemType, setSystemType] = useState<StorySystemType>('ahlulbayt');
-
-  // Mobile navigation tab state: 'stories' | 'editor'
-  const [mobileTab, setMobileTab] = useState<'stories' | 'editor'>('stories');
 
   // Database states
   const [stories, setStories] = useState<Story[]>([]);
@@ -183,21 +180,27 @@ export default function App() {
     }
   }, [isConfigured, systemType]);
 
-  // Fetch chapters when selected story changes and systemType is prophet
+  // Fetch chapters when selected story changes and the story is chapter-based
   useEffect(() => {
-    if (isConfigured && selectedStoryId && systemType === 'prophet') {
+    const selectedStory = stories.find((s) => s.id === selectedStoryId);
+    const isChapterStory = systemType === 'prophet' || !!selectedStory?.is_chapter_based;
+
+    if (isConfigured && selectedStoryId && isChapterStory) {
       fetchChaptersForStory(selectedStoryId);
     } else {
       setChapters([]);
       setSelectedChapterId(null);
     }
-  }, [selectedStoryId, systemType, isConfigured]);
+  }, [selectedStoryId, systemType, isConfigured, stories]);
 
-  // Fetch blocks when selected chapter changes (prophet) or selected story changes (ahlulbayt)
+  // Fetch blocks when selected chapter changes (if chapter-based) or selected story changes (if direct)
   useEffect(() => {
     if (!isConfigured) return;
 
-    if (systemType === 'ahlulbayt') {
+    const selectedStory = stories.find((s) => s.id === selectedStoryId);
+    const isChapterStory = systemType === 'prophet' || !!selectedStory?.is_chapter_based;
+
+    if (!isChapterStory) {
       if (selectedStoryId) {
         fetchBlocksForStory(selectedStoryId);
       } else {
@@ -210,7 +213,7 @@ export default function App() {
         setBlocks([]);
       }
     }
-  }, [selectedStoryId, selectedChapterId, systemType, isConfigured]);
+  }, [selectedStoryId, selectedChapterId, systemType, isConfigured, stories]);
 
   const fetchStories = async () => {
     const client = getSupabaseClient();
@@ -411,8 +414,11 @@ export default function App() {
 
     setIsSavingBlocks(true);
 
+    const selectedStory = stories.find((s) => s.id === selectedStoryId);
+    const isChapterStory = systemType === 'prophet' || !!selectedStory?.is_chapter_based;
+
     try {
-      if (systemType === 'ahlulbayt') {
+      if (!isChapterStory) {
         if (!selectedStoryId) throw new Error('No active story');
         const { error: deleteError } = await client
           .from('ahlulbayt_story_blocks')
@@ -456,9 +462,9 @@ export default function App() {
         }
         await fetchBlocksForChapter(selectedChapterId);
       }
+      addToast('success', 'Blocks saved successfully.');
     } catch (err: any) {
-      console.error('Save blocks error:', err);
-      throw err;
+      addToast('error', err.message || 'Failed to save blocks.');
     } finally {
       setIsSavingBlocks(false);
     }
@@ -552,17 +558,12 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-[#0c0e17] via-[#0f111a] to-[#07080f] text-white overflow-hidden font-sans select-none relative">
-      {/* Ambient Halos */}
-      <div className="absolute top-[-150px] right-[-150px] w-[500px] h-[500px] bg-emerald-900/10 blur-[140px] rounded-full pointer-events-none z-0" />
-      <div className="absolute bottom-[-150px] left-[150px] w-[450px] h-[450px] bg-amber-900/5 blur-[120px] rounded-full pointer-events-none z-0" />
-      <div className="absolute top-[20%] left-[-100px] w-[350px] h-[350px] bg-[#D4AF37]/5 blur-[100px] rounded-full pointer-events-none z-0" />
-
+    <div className="flex flex-col h-screen bg-[#0c0e17] text-white overflow-hidden font-sans select-none relative">
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-       {/* Header */}
-      <header className="h-16 border-b border-white/10 bg-white/[0.01] backdrop-blur-md px-3 sm:px-6 flex items-center justify-between z-10 flex-shrink-0 shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
+      {/* Header */}
+      <header className="h-16 border-b border-white/10 bg-[#0f111a] px-3 sm:px-6 flex items-center justify-between z-10 flex-shrink-0">
         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <div className="hidden min-[370px]:flex h-9 w-14 sm:h-11 sm:w-20 rounded-lg bg-[#D4AF37]/5 border border-[#D4AF37]/20 items-center justify-center overflow-hidden p-1 shadow-[0_0_12px_rgba(212,175,55,0.1)] transition-all hover:bg-[#D4AF37]/10 hover:border-[#D4AF37]/35 flex-shrink-0">
             <Logo className="w-full h-full" />
@@ -641,7 +642,7 @@ export default function App() {
               className="hidden sm:flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-3 bg-emerald-950/30 border border-emerald-500/20 rounded-full text-xs text-emerald-400"
               title={t.databaseConnected}
             >
-              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 flex-shrink-0" />
               <span className="hidden sm:inline text-[9px] sm:text-xs font-medium">{t.databaseConnected}</span>
             </div>
           )}
@@ -649,7 +650,7 @@ export default function App() {
       </header>
 
       {/* Main Workspace Grid */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative z-1">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {tableError ? (
           /* Table missing warning screen */
           <div className="flex-1 flex flex-col items-center justify-center p-8 bg-transparent">
@@ -701,31 +702,23 @@ export default function App() {
           </div>
         ) : (
           <>
+            {/* On mobile: show Sidebar OR editor, never both at once */}
+            <Sidebar
+              currentUser={user}
+              stories={stories}
+              selectedStoryId={selectedStoryId}
+              onSelectStory={setSelectedStoryId}
+              onAddStoryOpen={() => setIsAddStoryOpen(true)}
+              isLoading={isLoadingStories}
+              lang={lang}
+              systemType={systemType}
+              onSystemTypeChange={setSystemType}
+            />
 
-            {/* Sidebar: always visible on desktop; on mobile only when mobileTab=stories */}
-            <div className={`md:flex ${
-              mobileTab === 'stories' ? 'flex' : 'hidden'
-            } flex-col flex-shrink-0 w-full md:w-85 lg:w-96 h-full overflow-hidden`}>
-              <Sidebar
-                currentUser={user}
-                stories={stories}
-                selectedStoryId={selectedStoryId}
-                onSelectStory={(id) => {
-                  setSelectedStoryId(id);
-                  setMobileTab('editor'); // Auto-switch to editor on mobile when story selected
-                }}
-                onAddStoryOpen={() => setIsAddStoryOpen(true)}
-                isLoading={isLoadingStories}
-                lang={lang}
-                systemType={systemType}
-                onSystemTypeChange={setSystemType}
-              />
-            </div>
-
-            {/* MainEditor: always visible on desktop; on mobile only when mobileTab=editor */}
-            <div className={`md:flex flex-1 ${
-              mobileTab === 'editor' ? 'flex' : 'hidden'
-            } flex-col overflow-hidden`}>
+            {/* On mobile: only render editor when a story is active */}
+            <div className={`flex-1 flex flex-col overflow-hidden ${
+              selectedStoryId ? 'flex' : 'hidden md:flex'
+            }`}>
               <MainEditorPanel
                 currentUser={user}
                 currentUserRole={userRole}
@@ -738,10 +731,7 @@ export default function App() {
                 isSavingBlocks={isSavingBlocks}
                 addToast={addToast}
                 lang={lang}
-                onDeselectStory={() => {
-                  setSelectedStoryId(null);
-                  setMobileTab('stories'); // Go back to stories list on mobile
-                }}
+                onDeselectStory={() => setSelectedStoryId(null)}
                 systemType={systemType}
                 chapters={chapters}
                 selectedChapterId={selectedChapterId}
@@ -750,6 +740,8 @@ export default function App() {
                 onAddChapter={handleAddChapter}
                 onUpdateChapter={handleUpdateChapter}
                 onDeleteChapter={handleDeleteChapter}
+                stories={stories}
+                onSelectStory={setSelectedStoryId}
               />
             </div>
           </>
@@ -782,72 +774,6 @@ export default function App() {
           />
         </Suspense>
       )}
-      {/* ── Mobile Bottom Navigation Bar ─────────────────────────── */}
-      {user && !tableError && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0c0e17]/95 border-t border-white/10 bottom-nav-safe shadow-[0_-4px_24px_rgba(0,0,0,0.6)]">
-          <div className="flex items-stretch h-16">
-
-            {/* Tab: Stories List */}
-            <button
-              id="mobile-nav-stories"
-              onClick={() => setMobileTab('stories')}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                mobileTab === 'stories'
-                  ? 'text-[#D4AF37]'
-                  : 'text-stone-500 hover:text-stone-300'
-              }`}
-            >
-              <BookMarked className={`w-5 h-5 transition-transform ${
-                mobileTab === 'stories' ? 'scale-110' : ''
-              }`} />
-              <span className="text-[10px] font-semibold tracking-wide">
-                {lang === 'ar' ? 'القصص' : 'Stories'}
-              </span>
-              {mobileTab === 'stories' && (
-                <span className="absolute bottom-0 w-10 h-0.5 bg-[#D4AF37] rounded-t-full" />
-              )}
-            </button>
-
-            {/* Tab: Add New Story — center prominent button */}
-            <button
-              id="mobile-nav-add"
-              onClick={() => setIsAddStoryOpen(true)}
-              className="flex-1 flex flex-col items-center justify-center gap-1 cursor-pointer group"
-            >
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-amber-600 flex items-center justify-center shadow-lg shadow-amber-900/40 group-active:scale-95 transition-transform -mt-4">
-                <PlusCircle className="w-5 h-5 text-black" />
-              </div>
-            </button>
-
-            {/* Tab: Editor */}
-            <button
-              id="mobile-nav-editor"
-              onClick={() => setMobileTab('editor')}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                mobileTab === 'editor'
-                  ? 'text-[#D4AF37]'
-                  : 'text-stone-500 hover:text-stone-300'
-              }`}
-            >
-              <PenLine className={`w-5 h-5 transition-transform ${
-                mobileTab === 'editor' ? 'scale-110' : ''
-              }`} />
-              <span className="text-[10px] font-semibold tracking-wide">
-                {lang === 'ar' ? 'المحرر' : 'Editor'}
-              </span>
-              {mobileTab === 'editor' && (
-                <span className="absolute bottom-0 w-10 h-0.5 bg-[#D4AF37] rounded-t-full" />
-              )}
-              {/* Badge: show dot if a story is selected */}
-              {selectedStoryId && mobileTab !== 'editor' && (
-                <span className="absolute top-2 w-2 h-2 rounded-full bg-emerald-400" />
-              )}
-            </button>
-
-          </div>
-        </nav>
-      )}
     </div>
-
   );
 }

@@ -4,12 +4,13 @@ import {
   Plus, MessageSquare, Quote, Heart, ArrowRightLeft, Sparkles,
   Info, AlertTriangle, BookMarked, Check, Loader2, Undo2,
   ChevronLeft, ChevronRight, Copy, X, FileText, Eye, CheckCircle2,
-  GripVertical, History
+  GripVertical, History, SlidersHorizontal
 } from 'lucide-react';
 import { Story, StoryBlock, BlockType, StorySystemType, Chapter, StoryStatus } from '../types';
 import { Language, translations, IMAMS_LANG, CATEGORIES_LANG } from '../types/locale';
 import R2ImageUploader from './R2ImageUploader';
 import { deleteImageFromR2 } from '../services/r2';
+import RichTextEditor from './RichTextEditor';
 
 interface MainEditorPanelProps {
   currentUser?: any;
@@ -32,6 +33,8 @@ interface MainEditorPanelProps {
   onAddChapter: (chapter: Omit<Chapter, 'order_index'>) => Promise<void>;
   onUpdateChapter: (chapter: Chapter) => Promise<void>;
   onDeleteChapter: (chapterId: string) => Promise<void>;
+  stories?: Story[];
+  onSelectStory?: (id: string) => void;
 }
 
 const PROPHET_CATEGORIES = [
@@ -70,6 +73,8 @@ export default function MainEditorPanel({
   onAddChapter,
   onUpdateChapter,
   onDeleteChapter,
+  stories = [],
+  onSelectStory,
 }: MainEditorPanelProps) {
   const [activeTab, setActiveTab] = useState<'metadata' | 'content'>('metadata');
   const [editorBlocks, setEditorBlocks] = useState<EditorBlock[]>([]);
@@ -100,9 +105,20 @@ export default function MainEditorPanel({
   const [categorySection, setCategorySection] = useState('');
   // Review workflow status
   const [status, setStatus] = useState<StoryStatus>('draft');
+  const [isChapterBased, setIsChapterBased] = useState(false);
 
   const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Filter states for when no story is selected (Dashboard Home view)
+  const [selectedImamIdFilter, setSelectedImamIdFilter] = useState<string | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
+
+  // Reset filters when system type changes
+  useEffect(() => {
+    setSelectedImamIdFilter(null);
+    setSelectedCategoryFilter(null);
+  }, [systemType]);
 
   // Track temporary image uploads in this session that haven't been saved yet
   const tempUploadedStoryImages = useRef<string[]>([]);
@@ -146,6 +162,7 @@ export default function MainEditorPanel({
       setCategoryLabel(story.category_label || '');
       setCategorySection(story.category_section || '');
       setStatus((story.status as StoryStatus) || 'draft');
+      setIsChapterBased(!!story.is_chapter_based);
 
       setShowDeleteConfirm(false);
     }
@@ -273,23 +290,204 @@ export default function MainEditorPanel({
   }, []);
 
   if (!story) {
+    // Filter stories by selected figure or category
+    const storiesList = (stories || []).filter((s) => {
+      if (systemType === 'ahlulbayt') {
+        if (selectedImamIdFilter && s.imam_id !== selectedImamIdFilter) return false;
+        if (selectedCategoryFilter && s.category !== selectedCategoryFilter) return false;
+        return true;
+      } else {
+        if (selectedCategoryFilter && s.category_label !== selectedCategoryFilter) return false;
+        return true;
+      }
+    });
+
+    const storyCountByImam = (stories || []).reduce((acc: Record<string, number>, s) => {
+      if (s.imam_id) {
+        acc[s.imam_id] = (acc[s.imam_id] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
     return (
       <div 
         id="empty-editor-panel"
-      className="hidden md:flex flex-1 bg-transparent flex-col items-center justify-center p-8 text-center"
+        className="flex-1 bg-[#0c0e17] flex flex-col overflow-y-auto p-4 sm:p-8"
       >
-        <div className="relative mb-6">
-          <div className="absolute inset-0 bg-emerald-500/10 rounded-full blur-xl w-32 h-32 -translate-x-4 -translate-y-4" />
-          <div className="relative p-6 bg-white/5 border border-white/10 rounded-2xl text-[#D4AF37] shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] backdrop-blur-md">
-            <BookOpen className="w-12 h-12" />
+        {/* Upper Hero/Banner */}
+        <div className="relative w-full max-w-5xl mx-auto mb-8 p-6 sm:p-8 rounded-2xl bg-gradient-to-r from-[#D4AF37]/5 via-white/[0.01] to-stone-900/30 border border-white/5 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 shadow-[0_4px_30px_rgba(0,0,0,0.2)]">
+          <div className="absolute inset-0 bg-[#D4AF37]/5 rounded-full blur-3xl w-48 h-48 -top-12 -start-12" />
+          <div className="space-y-2 text-start z-10">
+            <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-wide text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-[#D4AF37]" />
+              {lang === 'ar' ? 'فهرس ومحرّر المجموعات المباركة' : 'Spiritual Narrative Hub'}
+            </h2>
+            <p className="text-stone-400 text-xs sm:text-sm max-w-xl leading-relaxed">
+              {lang === 'ar' 
+                ? 'مرحباً بك في لوحة تحكّم كتابة وتعديل سير الأطهار والأنبياء الكرام. اختر معصوماً أو تصنيفاً أدناه لاستعراض وإدارة القصص مباشرة.'
+                : 'Welcome to the noble content publisher. Select a holy figure or category below to review, manage, and write stories.'}
+            </p>
+          </div>
+          <div className="relative p-4 bg-white/5 border border-white/10 rounded-xl text-[#D4AF37] shadow-[0_8px_32px_rgba(0,0,0,0.3)] flex-shrink-0 z-10">
+            <BookOpen className="w-10 h-10" />
           </div>
         </div>
-        <h2 className="font-serif text-2xl font-semibold text-white tracking-wide">
-          {t.selectOrCreateStory}
-        </h2>
-        <p className="text-stone-450 text-sm mt-2 max-w-sm leading-relaxed">
-          {t.selectOrCreateStoryDesc}
-        </p>
+
+        {/* Dynamic Selector Panels */}
+        <div className="w-full max-w-5xl mx-auto space-y-6 flex-1 flex flex-col">
+          {systemType === 'ahlulbayt' ? (
+            <>
+              {/* Ma'soomeen Grid */}
+              <div className="space-y-3">
+                <h3 className="font-serif text-base font-semibold text-white tracking-wide text-start flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-[#D4AF37]" />
+                  {lang === 'ar' ? 'شخصيات آل البيت الطاهرة (ع) والأنبياء' : 'Noble Figures & Prophets (as)'}
+                </h3>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+                  {IMAMS_LANG[lang].map((imam) => {
+                    const isSelected = selectedImamIdFilter === imam.id;
+                    const count = storyCountByImam[imam.id] || 0;
+                    return (
+                      <button
+                        key={imam.id}
+                        type="button"
+                        onClick={() => setSelectedImamIdFilter(isSelected ? null : imam.id)}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-950/45 border-emerald-500/50 text-emerald-200 shadow-[0_0_15px_rgba(52,211,153,0.1)] scale-102 font-bold'
+                            : 'bg-white/[0.02] border-white/5 text-stone-400 hover:text-white hover:bg-white/[0.05] hover:border-white/15'
+                        }`}
+                      >
+                        <span className={`w-2.5 h-2.5 rounded-full mb-2 ${
+                          isSelected ? 'bg-emerald-400' : count > 0 ? 'bg-[#D4AF37]' : 'bg-stone-700'
+                        }`} />
+                        <span className="text-xs font-semibold text-center leading-tight truncate w-full">
+                          {imam.name.replace(/ \(.*?\)/, '')}
+                        </span>
+                        <span className="text-[10px] text-stone-500 mt-1 font-mono">
+                          {count} {lang === 'ar' ? 'قصة' : 'stories'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Prophet Categories Selection */}
+              <div className="space-y-3">
+                <h3 className="font-serif text-base font-semibold text-white tracking-wide text-start flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-[#D4AF37]" />
+                  {lang === 'ar' ? 'تصنيفات قصص الأنبياء' : 'Prophet Story Categories'}
+                </h3>
+                
+                <div className="flex flex-wrap gap-2">
+                  {PROPHET_CATEGORIES.map((cat) => {
+                    const isSelected = selectedCategoryFilter === cat;
+                    const count = (stories || []).filter((s) => s.type === 'prophet_story' && s.category_label === cat).length;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setSelectedCategoryFilter(isSelected ? null : cat)}
+                        className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-950/45 border-emerald-500/50 text-emerald-200 shadow-[0_0_15px_rgba(52,211,153,0.1)]'
+                            : 'bg-white/[0.02] border-white/5 text-stone-400 hover:text-white hover:bg-white/[0.05] hover:border-white/15'
+                        }`}
+                      >
+                        {cat} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Filtered Stories List Card View */}
+          <div className="space-y-3 flex-1 flex flex-col">
+            <div className="flex items-center justify-between">
+              <h3 className="font-serif text-base font-semibold text-white tracking-wide text-start flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#D4AF37]" />
+                {lang === 'ar' ? 'القصص المطابقة' : 'Matching Chronicles'}
+                <span className="text-[11px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full font-mono text-stone-400">
+                  {storiesList.length}
+                </span>
+              </h3>
+              {(selectedImamIdFilter || selectedCategoryFilter) && (
+                <button
+                  onClick={() => {
+                    setSelectedImamIdFilter(null);
+                    setSelectedCategoryFilter(null);
+                  }}
+                  className="text-xs text-[#D4AF37] hover:text-white transition-colors cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إعادة ضبط التصفية' : 'Reset Filters'}
+                </button>
+              )}
+            </div>
+
+            {storiesList.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
+                <BookOpen className="w-8 h-8 text-stone-500 mb-2" />
+                <p className="text-stone-400 text-sm">{lang === 'ar' ? 'لا توجد قصص مطابقة للمرشحات المحددة.' : 'No chronicles match your selection.'}</p>
+                <p className="text-stone-500 text-xs mt-1">
+                  {lang === 'ar' ? 'اختر شخصية أخرى أو قم بإنشاء قصة جديدة.' : 'Select another noble figure or create a new story.'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-1">
+                {storiesList.map((s) => {
+                  const localImamName = systemType === 'ahlulbayt'
+                    ? IMAMS_LANG[lang].find((i) => i.id === s.imam_id)?.name || s.imam_name
+                    : s.category_label;
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => onSelectStory?.(s.id)}
+                      className="group p-4 bg-white/[0.02] border border-white/5 hover:border-[#D4AF37]/35 rounded-xl text-start cursor-pointer hover:bg-white/[0.05] transition-all flex flex-col justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-[#D4AF37] font-semibold">{localImamName}</span>
+                          {s.status === 'published' ? (
+                            <span className="text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+                              {lang === 'ar' ? 'منشور' : 'Published'}
+                            </span>
+                          ) : s.status === 'review' ? (
+                            <span className="text-[9px] bg-amber-950/40 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">
+                              {lang === 'ar' ? 'قيد المراجعة' : 'In Review'}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] bg-stone-850 text-stone-400 border border-white/5 px-2 py-0.5 rounded-full">
+                              {lang === 'ar' ? 'مسودة' : 'Draft'}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="font-serif text-sm font-semibold text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
+                          {s.title}
+                        </h4>
+                        {s.summary && (
+                          <p className="text-xs text-stone-400 line-clamp-2 leading-relaxed">
+                            {s.summary}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between border-t border-white/5 pt-2 text-[10px] text-stone-500">
+                        <span>{s.category || s.category_section}</span>
+                        <span>{s.estimated_minutes} {lang === 'ar' ? 'دقائق قراءة' : 'min read'}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
@@ -332,6 +530,7 @@ export default function MainEditorPanel({
           tags: tags.trim(),
           author: author.trim() || (lang === 'ar' ? 'مكتبة سراج الأثر' : 'Siraj Al-Athar Library'),
           status,
+          is_chapter_based: isChapterBased,
         };
       } else {
         updatedStory = {
@@ -380,7 +579,8 @@ export default function MainEditorPanel({
   };
 
   const handleSaveBlocks = async () => {
-    if (systemType === 'prophet' && !selectedChapterId) {
+    const storyIsChapterBased = systemType === 'prophet' || !!story?.is_chapter_based;
+    if (storyIsChapterBased && !selectedChapterId) {
       addToast('error', lang === 'ar' ? 'يرجى تحديد فصل أولاً.' : 'Please select a chapter first.');
       return;
     }
@@ -393,7 +593,7 @@ export default function MainEditorPanel({
       setRlsError(null);
       const blocksToSave: StoryBlock[] = editorBlocks.map((b) => {
         const { editorKey, ...cleanBlock } = b;
-        if (systemType === 'prophet') {
+        if (storyIsChapterBased) {
           cleanBlock.chapter_id = selectedChapterId || '';
           delete cleanBlock.story_id;
         }
@@ -536,37 +736,37 @@ export default function MainEditorPanel({
         <button
           id="tab-metadata-btn"
           onClick={() => setActiveTab('metadata')}
-          className={`py-2.5 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 sm:gap-2 border-b-2 -mb-px focus:outline-none cursor-pointer flex-shrink-0 ${
+          className={`py-3 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 border-b-2 -mb-px focus:outline-none cursor-pointer flex-shrink-0 ${
             activeTab === 'metadata'
               ? 'border-[#D4AF37] text-[#D4AF37] font-bold'
               : 'border-transparent text-stone-400 hover:text-stone-200'
           }`}
         >
-          <Edit3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+          <Edit3 className="w-4 h-4 flex-shrink-0" />
           <span>{t.metaTab}</span>
         </button>
         <button
           id="tab-content-btn"
           onClick={() => setActiveTab('content')}
-          className={`py-2.5 sm:py-3 px-2 sm:px-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 sm:gap-2 border-b-2 -mb-px focus:outline-none cursor-pointer flex-shrink-0 ${
+          className={`py-3 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 border-b-2 -mb-px focus:outline-none cursor-pointer flex-shrink-0 ${
             activeTab === 'content'
               ? 'border-[#D4AF37] text-[#D4AF37] font-bold'
               : 'border-transparent text-stone-400 hover:text-stone-200'
           }`}
         >
-          <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+          <Layers className="w-4 h-4 flex-shrink-0" />
           <span>{t.contentTab}</span>
           {hasUnsavedBlockChanges && (
-            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
           )}
         </button>
       </div>
 
       {/* Tab Panels */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-6 pb-24 md:pb-6">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 pb-6">
         {activeTab === 'metadata' && (
           /* Metadata form */
-          <form onSubmit={handleSaveMetadata} className="max-w-3xl space-y-5 bg-white/[0.02] border border-white/5 rounded-2xl p-6 backdrop-blur-md text-start">
+          <form onSubmit={handleSaveMetadata} className="max-w-3xl space-y-5 bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-6 text-start">
             {!isOwner && (
               <div className="p-3 bg-amber-950/20 border border-amber-500/25 rounded-xl text-amber-300 text-xs flex items-center gap-2 mb-4">
                 <Info className="w-4 h-4 flex-shrink-0" />
@@ -577,7 +777,7 @@ export default function MainEditorPanel({
               {systemType === 'ahlulbayt' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.storyTitle}
                   </label>
                   <input
@@ -590,8 +790,34 @@ export default function MainEditorPanel({
                   />
                 </div>
 
+                <div className="space-y-1.5 md:col-span-2 text-start">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
+                    {lang === 'ar' ? 'نمط القصة' : 'Story Format'}
+                  </label>
+                  <div className="flex bg-white/5 border border-white/10 rounded-lg p-0.5 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setIsChapterBased(false)}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer text-center ${
+                        !isChapterBased ? 'bg-[#D4AF37] text-black shadow-md' : 'text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      {lang === 'ar' ? 'نمط حالي (سرد مباشر)' : 'Single Story / Narrative'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsChapterBased(true)}
+                      className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer text-center ${
+                        isChapterBased ? 'bg-[#D4AF37] text-black shadow-md' : 'text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      {lang === 'ar' ? 'نمط فصول (مثل قصص الأنبياء)' : 'Chapter-based'}
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-1.5 text-start">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.figureLabel}
                   </label>
                   <select
@@ -609,7 +835,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 text-start">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.categoryLabel}
                   </label>
                   <input
@@ -624,7 +850,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.summaryLabel}
                   </label>
                   <textarea
@@ -637,7 +863,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.narratorLabel}
                   </label>
                   <input
@@ -650,7 +876,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.estMinutes}
                   </label>
                   <input
@@ -664,7 +890,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.authorLabel}
                   </label>
                   <input
@@ -689,7 +915,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2 text-start">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.moralLabel}
                   </label>
                   <input
@@ -702,7 +928,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2 text-start">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.tagsLabel}
                   </label>
                   <input
@@ -717,7 +943,7 @@ export default function MainEditorPanel({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.storyTitle}
                   </label>
                   <input
@@ -731,7 +957,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 text-start">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.shortNameLabel}
                   </label>
                   <input
@@ -744,7 +970,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 text-start">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.categoryLabelText}
                   </label>
                   <input
@@ -758,7 +984,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 text-start">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.categorySectionLabel}
                   </label>
                   <input
@@ -783,7 +1009,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 text-start">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.authorLabel}
                   </label>
                   <input
@@ -796,7 +1022,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.summaryLabel}
                   </label>
                   <textarea
@@ -809,7 +1035,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.introLabel}
                   </label>
                   <textarea
@@ -822,7 +1048,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.estMinutes}
                   </label>
                   <input
@@ -836,7 +1062,7 @@ export default function MainEditorPanel({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-300 uppercase tracking-widest">
+                  <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">
                     {t.tagsLabel}
                   </label>
                   <input
@@ -920,7 +1146,7 @@ export default function MainEditorPanel({
               </div>
             )}
             <fieldset className="contents" disabled={!isOwner}>
-            {systemType === 'prophet' && (
+            {(systemType === 'prophet' || !!story?.is_chapter_based) && (
               <div className="mb-6 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold text-[#D4AF37] uppercase tracking-widest flex items-center gap-1.5 text-start">
@@ -1004,7 +1230,7 @@ export default function MainEditorPanel({
               </div>
             )}
 
-            {systemType === 'prophet' && !selectedChapterId ? null : isLoadingBlocks ? (
+            {(systemType === 'prophet' || !!story?.is_chapter_based) && !selectedChapterId ? null : isLoadingBlocks ? (
               /* Loading view */
               <div className="flex flex-col items-center justify-center py-16 space-y-3">
                 <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
@@ -1200,6 +1426,7 @@ const BlockEditorCard = React.memo(function BlockEditorCard({
   const [localTranslation, setLocalTranslation] = useState(block.translation || '');
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isHandleHeld, setIsHandleHeld] = useState(false);
   // Shared ref so drag events can read the current index without stale closure
   const dragIndexRef = useRef(index);
   useEffect(() => { dragIndexRef.current = index; }, [index]);
@@ -1295,8 +1522,11 @@ const BlockEditorCard = React.memo(function BlockEditorCard({
   return (
     <div
       id={`block-editor-card-${index}`}
-      draggable
-      onDragStart={handleDragStart}
+      draggable={isHandleHeld}
+      onDragStart={(e) => {
+        handleDragStart(e);
+        setIsHandleHeld(false);
+      }}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -1313,6 +1543,10 @@ const BlockEditorCard = React.memo(function BlockEditorCard({
         <div
           title={lang === 'ar' ? 'اسحب لإعادة الترتيب' : 'Drag to reorder'}
           className="cursor-grab active:cursor-grabbing p-1 text-stone-500 hover:text-[#D4AF37] transition-colors mb-1"
+          onMouseDown={() => setIsHandleHeld(true)}
+          onMouseUp={() => setIsHandleHeld(false)}
+          onTouchStart={() => setIsHandleHeld(true)}
+          onTouchEnd={() => setIsHandleHeld(false)}
         >
           <GripVertical className="w-4 h-4" />
         </div>
@@ -1388,28 +1622,27 @@ const BlockEditorCard = React.memo(function BlockEditorCard({
 
         {/* Text Input depending on block type */}
         {block.type === 'paragraph' && (
-          <textarea
+          <RichTextEditor
             id={`block-${index}-text-input`}
             value={localText}
-            onChange={(e) => handleTextChange(e.target.value)}
+            onChange={handleTextChange}
             onBlur={handleTextBlur}
             placeholder={t.prosePlaceholder}
-            rows={3}
-            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-stone-200 text-sm focus:outline-none focus:border-blue-500 transition-colors leading-relaxed text-start animate-none"
+            lang={lang}
+            className="text-stone-200 text-sm leading-relaxed"
           />
         )}
 
         {block.type === 'verse' && (
-          <div className="space-y-2.5">
-            <textarea
+          <div className="space-y-2.5 w-full">
+            <RichTextEditor
               id={`block-${index}-verse-arabic`}
               value={localText}
-              onChange={(e) => handleTextChange(e.target.value)}
+              onChange={handleTextChange}
               onBlur={handleTextBlur}
               placeholder={t.arabicVersePlaceholder}
-              dir="rtl"
-              rows={2}
-              className="w-full bg-black/35 border border-white/10 rounded-lg p-3 text-emerald-300 text-xl font-serif focus:outline-none focus:border-emerald-500 transition-colors leading-loose text-right animate-none"
+              lang={lang}
+              className="text-emerald-300 text-xl font-serif leading-loose text-right"
             />
             <input
               id={`block-${index}-verse-ref`}
@@ -1424,15 +1657,15 @@ const BlockEditorCard = React.memo(function BlockEditorCard({
         )}
 
         {block.type === 'quote' && (
-          <div className="space-y-2.5">
-            <textarea
+          <div className="space-y-2.5 w-full">
+            <RichTextEditor
               id={`block-${index}-quote-text`}
               value={localText}
-              onChange={(e) => handleTextChange(e.target.value)}
+              onChange={handleTextChange}
               onBlur={handleTextBlur}
               placeholder={t.quotePlaceholder}
-              rows={2}
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-stone-200 text-sm italic focus:outline-none focus:border-amber-500 transition-colors leading-relaxed text-start animate-none"
+              lang={lang}
+              className="text-stone-200 text-sm italic leading-relaxed"
             />
             <input
               id={`block-${index}-quote-speaker`}
@@ -1591,16 +1824,19 @@ function ChapterModal({ isOpen, onClose, chapter, onSave, lang }: ChapterModalPr
   };
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#1e1e1e] border border-[#D4AF37]/45 rounded-xl shadow-[0_0_30px_rgba(212,175,55,0.15)] overflow-hidden">
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] overflow-y-auto p-4 flex justify-center items-start sm:items-center">
+      <div className="w-full max-w-md bg-[#1e1e1e] border border-[#D4AF37]/45 rounded-xl shadow-[0_0_30px_rgba(212,175,55,0.15)] my-auto overflow-hidden">
+        {/* Header */}
         <div className="p-4 border-b border-stone-800 flex items-center justify-between bg-stone-900">
           <h3 className="font-serif text-sm font-bold text-white tracking-wide">
             {chapter ? t.editChapter : t.createChapter}
           </h3>
-          <button onClick={handleCancel} className="text-stone-400 hover:text-white transition-colors">
+          <button onClick={handleCancel} className="text-stone-400 hover:text-white transition-colors p-1">
             <X className="w-4 h-4" />
           </button>
         </div>
+        
+        {/* Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 text-start">
           {error && <div className="text-xs text-red-400 bg-red-950/20 border border-red-900/50 p-2 rounded">{error}</div>}
 
@@ -1727,18 +1963,19 @@ function ChapterModal({ isOpen, onClose, chapter, onSave, lang }: ChapterModalPr
             </select>
           </div>
 
-          <div className="pt-3 border-t border-stone-800 flex gap-2 justify-end">
+          {/* Footer Actions */}
+          <div className="pt-4 border-t border-stone-800 flex gap-2 justify-end">
             <button
               type="button"
               onClick={handleCancel}
-              className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs rounded transition-colors"
+              className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs rounded transition-colors touch-target"
             >
               {t.cancel}
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-3 py-1.5 bg-[#D4AF37] hover:bg-[#c49f27] text-black text-xs font-semibold rounded transition-colors"
+              className="px-4 py-2 bg-[#D4AF37] hover:bg-[#c49f27] text-black text-xs font-semibold rounded transition-colors touch-target"
             >
               {isSaving ? t.saving : (chapter ? t.saveChapter : t.createChapter)}
             </button>

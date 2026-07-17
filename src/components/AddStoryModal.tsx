@@ -30,6 +30,7 @@ export default function AddStoryModal({ isOpen, onClose, onAdd, lang, currentUse
   const t = translations[lang];
 
   const [type, setType] = useState<StorySystemType>('ahlulbayt');
+  const [isChapterBased, setIsChapterBased] = useState(false);
   const [id, setId] = useState('');
   const [title, setTitle] = useState('');
   const [imamId, setImamId] = useState(IMAMS[0].id);
@@ -106,12 +107,14 @@ export default function AddStoryModal({ isOpen, onClose, onAdd, lang, currentUse
       setIntroduction('');
       setCategoryLabel('');
       setCategorySection('الأنبياء');
+      setIsChapterBased(false);
     } else {
       // Clear ahl al-bayt-only fields
       setImamId(IMAMS[0].id);
       setCategory('');
       setNarrator('');
       setMoral('');
+      setIsChapterBased(true);
     }
     // Also reset the ID since the slug convention may differ between types
     if (!isIdManuallyEdited) {
@@ -179,6 +182,7 @@ export default function AddStoryModal({ isOpen, onClose, onAdd, lang, currentUse
           author: author.trim() || (lang === 'ar' ? 'مكتبة سراج الأثر' : 'Siraj Al-Athar Library'),
           order_index: 0,
           status: 'draft',
+          is_chapter_based: isChapterBased,
         };
       } else {
         newStory = {
@@ -311,6 +315,34 @@ export default function AddStoryModal({ isOpen, onClose, onAdd, lang, currentUse
                 </button>
               </div>
             </div>
+
+            {type === 'ahlulbayt' && (
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-semibold text-stone-300 uppercase tracking-wider block text-start">
+                  {lang === 'ar' ? 'نمط القصة' : 'Story Format'}
+                </label>
+                <div className="flex bg-stone-900 border border-stone-800 rounded-lg p-0.5 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setIsChapterBased(false)}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer text-center ${
+                      !isChapterBased ? 'bg-[#D4AF37] text-black shadow-md' : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    {lang === 'ar' ? 'نمط حالي (سرد مباشر)' : 'Single Story / Narrative'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsChapterBased(true)}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer text-center ${
+                      isChapterBased ? 'bg-[#D4AF37] text-black shadow-md' : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    {lang === 'ar' ? 'نمط فصول (مثل قصص الأنبياء)' : 'Chapter-based'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1.5 md:col-span-2">
               <label className="text-xs font-semibold text-stone-300 uppercase tracking-wider">

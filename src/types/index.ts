@@ -15,6 +15,7 @@ export interface Story {
   created_by?: string;
   /** Review workflow status — defaults to 'draft' for new stories */
   status?: StoryStatus;
+  is_chapter_based?: boolean;
 
   // Ahl al-Bayt specific
   imam_id?: string;

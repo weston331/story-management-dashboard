@@ -100,6 +100,16 @@ const Sidebar = React.memo(function Sidebar({
     });
   }, [stories, search, selectedImam, selectedCategory, systemType, onlyMyStories, currentUser]);
 
+  // Story count per imam — used for badge labels on each imam card
+  const storyCountByImam = useMemo(() => {
+    const counts: Record<string, number> = {};
+    stories.forEach((s) => {
+      if (s.imam_id) counts[s.imam_id] = (counts[s.imam_id] || 0) + 1;
+    });
+    return counts;
+  }, [stories]);
+
+
   return (
     <div 
       id="sidebar-container"
@@ -125,7 +135,7 @@ const Sidebar = React.memo(function Sidebar({
         <div className="flex flex-col min-[380px]:flex-row bg-white/5 border border-white/10 rounded-lg p-0.5 w-full gap-1 min-[380px]:gap-0">
           <button
             onClick={() => onSystemTypeChange('ahlulbayt')}
-            className={`flex-1 py-1.5 text-[10px] font-bold tracking-wider rounded-md transition-all cursor-pointer text-center ${
+            className={`flex-1 py-2 text-xs font-bold tracking-wider rounded-md transition-all cursor-pointer text-center ${
               systemType === 'ahlulbayt' ? 'bg-[#D4AF37] text-black shadow-md' : 'text-stone-400 hover:text-white'
             }`}
           >
@@ -133,7 +143,7 @@ const Sidebar = React.memo(function Sidebar({
           </button>
           <button
             onClick={() => onSystemTypeChange('prophet')}
-            className={`flex-1 py-1.5 text-[10px] font-bold tracking-wider rounded-md transition-all cursor-pointer text-center ${
+            className={`flex-1 py-2 text-xs font-bold tracking-wider rounded-md transition-all cursor-pointer text-center ${
               systemType === 'prophet' ? 'bg-[#D4AF37] text-black shadow-md' : 'text-stone-400 hover:text-white'
             }`}
           >
@@ -145,7 +155,7 @@ const Sidebar = React.memo(function Sidebar({
         <button
           id="sidebar-add-story-btn"
           onClick={onAddStoryOpen}
-          className="w-full py-2 px-3 bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/30 hover:border-[#D4AF37]/50 rounded-lg text-xs font-semibold tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-1.5 shadow-[0_4px_20px_rgba(212,175,55,0.05)] focus:outline-none cursor-pointer"
+          className="w-full py-2.5 px-3 bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/30 hover:border-[#D4AF37]/50 rounded-lg text-sm font-semibold tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-1.5 shadow-[0_4px_20px_rgba(212,175,55,0.05)] focus:outline-none cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           {t.addNobleStory}
@@ -160,7 +170,7 @@ const Sidebar = React.memo(function Sidebar({
             placeholder={t.searchPlaceholder}
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-lg ps-9 pe-4 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#D4AF37]/60 focus:ring-1 focus:ring-[#D4AF37]/20 transition-all text-start"
+            className="w-full bg-white/5 border border-white/10 rounded-lg ps-9 pe-4 py-2.5 text-sm text-white placeholder-stone-500 focus:outline-none focus:border-[#D4AF37]/60 focus:ring-1 focus:ring-[#D4AF37]/20 transition-all text-start"
           />
         </div>
 
@@ -187,12 +197,12 @@ const Sidebar = React.memo(function Sidebar({
           </div>
         )}
 
-        {/* Filters Grid */}
-        <div className="flex flex-col min-[380px]:flex-row gap-2">
+        {/* Filters */}
+        <div className="flex flex-col gap-2">
           {systemType === 'ahlulbayt' ? (
             <>
               {/* Imam Filter */}
-              <div className="flex-1 space-y-1">
+              <div className="space-y-1">
                 <label className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
                   {t.byFigure}
                 </label>
@@ -212,7 +222,7 @@ const Sidebar = React.memo(function Sidebar({
               </div>
 
               {/* Category Filter */}
-              <div className="flex-1 space-y-1">
+              <div className="space-y-1">
                 <label className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">
                   {t.byCategory}
                 </label>
@@ -257,11 +267,12 @@ const Sidebar = React.memo(function Sidebar({
             </div>
           )}
         </div>
+
       </div>
 
       {/* Story List with dynamic viewport rendering pagination */}
       <div 
-        className="flex-1 overflow-y-auto p-3 space-y-2.5 pb-20 md:pb-3"
+        className="flex-1 overflow-y-auto p-3 space-y-2.5"
         onScroll={(e) => {
           const target = e.currentTarget;
           // When user scrolls down close to bottom (within 120px), load the next 40 items
@@ -364,10 +375,10 @@ const StoryListCard = React.memo(function StoryListCard({
     <div
       id={`story-card-${story.id}`}
       onClick={() => onSelectStory(story.id)}
-      className={`group border rounded-xl p-4 cursor-pointer transition-all duration-300 relative overflow-hidden story-card-contain ${
+      className={`group border rounded-xl p-4 cursor-pointer transition-colors relative overflow-hidden story-card-contain ${
         isSelected
-          ? 'bg-[#D4AF37]/10 border-[#D4AF37]/40 shadow-[0_8px_32px_rgba(212,175,55,0.1)]'
-          : 'bg-white/[0.03] border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/[0.06] hover:shadow-[0_8px_32px_rgba(255,255,255,0.02)]'
+          ? 'bg-[#D4AF37]/10 border-[#D4AF37]/40'
+          : 'bg-white/[0.03] border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/[0.06]'
       }`}
     >
       {/* Decorative border highlight for selected */}
@@ -377,7 +388,7 @@ const StoryListCard = React.memo(function StoryListCard({
 
       <div className="space-y-2">
         <div className="flex justify-between items-start gap-2">
-          <h3 className="font-serif text-sm font-semibold text-white tracking-wide group-hover:text-emerald-300 transition-colors duration-250 line-clamp-1 text-start">
+          <h3 className="font-serif text-base font-semibold text-white tracking-wide group-hover:text-emerald-300 transition-colors line-clamp-2 text-start leading-snug">
             {story.title}
           </h3>
           <ChevronRight className={`w-4 h-4 text-stone-500 flex-shrink-0 group-hover:text-emerald-400 transition-all ${
@@ -387,13 +398,13 @@ const StoryListCard = React.memo(function StoryListCard({
 
         {/* Figure/Imam name & category */}
         <div className="space-y-1 text-start">
-          <p className="text-[11px] text-[#D4AF37] font-medium tracking-wide">
+          <p className="text-xs text-[#D4AF37] font-medium tracking-wide">
             {displaySubtitle}
           </p>
           {/* Clock row */}
-          <div className="flex items-center gap-1.5 text-[10px] text-stone-400 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-stone-400 flex-wrap">
             {displayCategory && (
-              <span className="px-1.5 py-0.5 bg-white/10 border border-white/5 rounded text-stone-300 font-medium">
+              <span className="px-2 py-0.5 bg-white/10 border border-white/5 rounded text-stone-300 font-medium">
                 {displayCategory}
               </span>
             )}
@@ -405,24 +416,24 @@ const StoryListCard = React.memo(function StoryListCard({
           {/* Status badge + Mine badge row */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {story.status === 'published' ? (
-              <span className="px-1.5 py-0.5 bg-emerald-950/40 border border-emerald-500/25 rounded text-emerald-400 text-[9px] font-bold flex items-center gap-0.5 flex-shrink-0">
-                <CheckCircle2 className="w-2.5 h-2.5" />
+              <span className="px-2 py-0.5 bg-emerald-950/40 border border-emerald-500/25 rounded text-emerald-400 text-[11px] font-bold flex items-center gap-1 flex-shrink-0">
+                <CheckCircle2 className="w-3 h-3" />
                 {lang === 'ar' ? 'منشور' : 'Published'}
               </span>
             ) : story.status === 'review' ? (
-              <span className="px-1.5 py-0.5 bg-amber-950/40 border border-amber-500/25 rounded text-amber-400 text-[9px] font-bold flex items-center gap-0.5 flex-shrink-0">
-                <Eye className="w-2.5 h-2.5" />
+              <span className="px-2 py-0.5 bg-amber-950/40 border border-amber-500/25 rounded text-amber-400 text-[11px] font-bold flex items-center gap-1 flex-shrink-0">
+                <Eye className="w-3 h-3" />
                 {lang === 'ar' ? 'قيد المراجعة' : 'In Review'}
               </span>
             ) : (
-              <span className="px-1.5 py-0.5 bg-stone-800/60 border border-stone-600/25 rounded text-stone-400 text-[9px] font-bold flex items-center gap-0.5 flex-shrink-0">
-                <FileText className="w-2.5 h-2.5" />
+              <span className="px-2 py-0.5 bg-stone-800/60 border border-stone-600/25 rounded text-stone-400 text-[11px] font-bold flex items-center gap-1 flex-shrink-0">
+                <FileText className="w-3 h-3" />
                 {lang === 'ar' ? 'مسودة' : 'Draft'}
               </span>
             )}
             {story.created_by === currentUser?.id && (
-              <span className="px-1.5 py-0.5 bg-[#D4AF37]/15 border border-[#D4AF37]/35 rounded text-[#D4AF37] text-[9px] font-bold flex items-center gap-0.5 flex-shrink-0">
-                <Sparkles className="w-2.5 h-2.5 text-[#D4AF37]" />
+              <span className="px-2 py-0.5 bg-[#D4AF37]/15 border border-[#D4AF37]/35 rounded text-[#D4AF37] text-[11px] font-bold flex items-center gap-1 flex-shrink-0">
+                <Sparkles className="w-3 h-3 text-[#D4AF37]" />
                 {lang === 'ar' ? 'خاصتي' : 'Mine'}
               </span>
             )}
@@ -435,9 +446,9 @@ const StoryListCard = React.memo(function StoryListCard({
             {tagArray.slice(0, 3).map((tag, idx) => (
               <span
                 key={idx}
-                className="text-[9px] bg-emerald-950/40 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-900/30 font-medium flex items-center gap-0.5"
+                className="text-[11px] bg-emerald-950/40 text-emerald-300 px-2 py-0.5 rounded border border-emerald-900/30 font-medium flex items-center gap-1"
               >
-                <Tag className="w-2.5 h-2.5 text-emerald-500" />
+                <Tag className="w-3 h-3 text-emerald-500" />
                 {tag}
               </span>
             ))}
