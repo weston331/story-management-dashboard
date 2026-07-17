@@ -523,6 +523,7 @@ export default function MainEditorPanel({
           imam_name: imamName,
           category: category,
           summary: summary.trim(),
+          introduction: isChapterBased ? introduction.trim() : '',
           estimated_minutes: Number(estimatedMinutes) || 3,
           narrator: narrator.trim(),
           moral: moral.trim(),
@@ -861,6 +862,24 @@ export default function MainEditorPanel({
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/60 focus:ring-1 focus:ring-[#D4AF37]/20 transition-all placeholder-stone-500 resize-none leading-relaxed"
                   />
                 </div>
+
+                {/* Introduction: shown only for chapter-based imam stories */}
+                {isChapterBased && (
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-sm font-bold text-[#D4AF37] uppercase tracking-widest flex items-center gap-2">
+                      <BookOpen size={14} />
+                      {t.introLabel}
+                    </label>
+                    <textarea
+                      id="metadata-intro-textarea"
+                      rows={4}
+                      value={introduction}
+                      onChange={(e) => setIntroduction(e.target.value)}
+                      placeholder={lang === 'ar' ? 'نبذة تعريفية تظهر قبل قائمة الفصول في التطبيق...' : 'An introduction shown before the chapter list in the app...'}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/60 focus:ring-1 focus:ring-[#D4AF37]/20 transition-all placeholder-stone-500 resize-none leading-relaxed"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-stone-300 uppercase tracking-widest">

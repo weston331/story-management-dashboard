@@ -174,6 +174,7 @@ export default function AddStoryModal({ isOpen, onClose, onAdd, lang, currentUse
           imam_name: imamName,
           category: category,
           summary: summary.trim(),
+          introduction: isChapterBased ? introduction.trim() : '',
           estimated_minutes: Number(estimatedMinutes) || 3,
           narrator: narrator.trim(),
           moral: moral.trim(),
@@ -456,6 +457,24 @@ export default function AddStoryModal({ isOpen, onClose, onAdd, lang, currentUse
                     className="w-full bg-stone-900 border border-stone-800 rounded-lg px-3.5 py-2 text-white text-sm focus:outline-none focus:border-[#D4AF37] transition-colors placeholder-stone-600 resize-none"
                   />
                 </div>
+
+                {/* Introduction: only shown for chapter-based imam stories */}
+                {isChapterBased && (
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs font-semibold text-[#D4AF37] uppercase tracking-wider flex items-center gap-1.5">
+                      <BookOpen size={13} />
+                      {t.introLabel}
+                    </label>
+                    <textarea
+                      id="add-story-introduction"
+                      rows={3}
+                      value={introduction}
+                      onChange={(e) => setIntroduction(e.target.value)}
+                      placeholder={lang === 'ar' ? 'نبذة تعريفية تظهر قبل قائمة الفصول...' : 'An introduction shown before the chapter list...'}
+                      className="w-full bg-stone-900 border border-stone-800 rounded-lg px-3.5 py-2 text-white text-sm focus:outline-none focus:border-[#D4AF37] transition-colors placeholder-stone-600 resize-none leading-relaxed"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-stone-300 uppercase tracking-wider">
